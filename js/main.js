@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Dynamic collection table: loads data/colecao.csv and enables client-side filter
+    // Dynamic collection table: uses prebuilt data/collection-data.js and enables client-side filter
     const searchInput = document.getElementById('collection-search');
     const table = document.getElementById('collection-table');
     const statusEl = document.getElementById('collection-status');
@@ -32,58 +32,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (searchInput && table && statusEl && metaEl) {
         const tbody = table.querySelector('tbody');
-        let records = [];
-        const loadCSV = async () => {
-            try {
-                statusEl.textContent = 'Carregando registros da coleção...';
-                const resp = await fetch('data/colecao.csv', { cache: 'no-cache' });
-                if (!resp.ok) throw new Error(`Erro ao carregar CSV: ${resp.status}`);
-                const text = await resp.text();
+        const source = Array.isArray(window.COLLECTION_DATA) ? window.COLLECTION_DATA : [];
+        let records = source.map(row => ({
+            catalogNumber: row.catalogNumber || '',
+            order: row.order || '',
+            family: row.family || '',
+            genus: row.genus || '',
+            scientificName: row.scientificName || row.specificEpithet || '',
+            stateProvince: row.stateProvince || '',
+            municipality: row.municipality || '',
+            locality: row.locality || '',
+            eventDate: row.eventDate || '',
+            preparations: row.preparations || ''
+        }));
 
-                const parseWithPapa = (csvText) => {
-                    return window.Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        dynamicTyping: false
-                    });
-                };
-
-                let parsed;
-                if (window.Papa) {
-                    parsed = parseWithPapa(text);
-                    if (parsed.errors && parsed.errors.length) {
-                        console.warn('Erros de parsing PapaParse', parsed.errors.slice(0, 3));
-                    }
-                    if (!parsed.data || !parsed.data.length) throw new Error('CSV sem linhas de dados.');
-                } else {
-                    throw new Error('Parser PapaParse não carregado.');
-                }
-
-                const needed = ['catalogNumber','order','family','genus','specificEpithet','scientificName','stateProvince','municipality','locality','eventDate','preparations'];
-                const missing = needed.filter(n => !(n in parsed.data[0]));
-                if (missing.length) throw new Error(`Colunas ausentes no CSV: ${missing.join(', ')}`);
-
-                records = parsed.data.map(row => ({
-                    catalogNumber: row.catalogNumber || '',
-                    order: row.order || '',
-                    family: row.family || '',
-                    genus: row.genus || '',
-                    scientificName: row.scientificName || row.specificEpithet || '',
-                    stateProvince: row.stateProvince || '',
-                    municipality: row.municipality || '',
-                    locality: row.locality || '',
-                    eventDate: row.eventDate || '',
-                    preparations: row.preparations || ''
-                }));
-
-                statusEl.textContent = '';
-                render();
-            } catch (err) {
-                console.error(err);
-                statusEl.textContent = err.message || 'Não foi possível carregar a tabela da coleção.';
-                metaEl.textContent = '';
-            }
-        };
+        if (!records.length) {
+            statusEl.textContent = 'Nenhum dado carregado. Gere data/collection-data.js a partir do CSV local antes de publicar.';
+        } else {
+            statusEl.textContent = '';
+        }
 
         const render = (term = '') => {
             const needle = term.trim().toLowerCase();
@@ -109,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         searchInput.addEventListener('input', () => render(searchInput.value));
-        loadCSV();
+        render();
     }
 
     // Mobile menu toggle (if needed in future)

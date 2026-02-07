@@ -21,26 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
         maxZoom: 19
     }).addTo(map);
 
-    const addMarkersFromCSV = async () => {
+    const addMarkersFromData = () => {
         try {
             if (statusEl) statusEl.textContent = 'Carregando pontos da coleção...';
 
-            const resp = await fetch('data/colecao.csv', { cache: 'no-cache' });
-            if (!resp.ok) throw new Error(`Erro ao carregar colecao.csv: ${resp.status}`);
-            const csvText = await resp.text();
-            if (!window.Papa) throw new Error('Parser CSV não carregado.');
-
-            const parsed = window.Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                dynamicTyping: true
-            });
-
-            if (parsed.errors && parsed.errors.length) {
-                console.warn('Erros de parsing CSV', parsed.errors.slice(0, 3));
-            }
-
-            const rows = (parsed.data || []).filter(r => typeof r === 'object');
+            const rows = Array.isArray(window.COLLECTION_DATA) ? window.COLLECTION_DATA : [];
             const markers = [];
             const bounds = L.latLngBounds();
 
@@ -75,19 +60,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 bounds.extend([lat, lon]);
             });
 
-            if (!markers.length) throw new Error('Nenhum ponto válido com coordenadas no CSV.');
+            if (!markers.length) throw new Error('Nenhum ponto válido com coordenadas. Gere data/collection-data.js a partir do CSV local.');
 
-            const layer = L.layerGroup(markers).addTo(map);
+            L.layerGroup(markers).addTo(map);
             map.fitBounds(bounds.pad(0.1));
 
             if (statusEl) statusEl.textContent = `Exibindo ${markers.length} pontos com coordenadas válidas.`;
         } catch (err) {
             console.error(err);
-            if (statusEl) statusEl.textContent = err.message || 'Erro ao carregar pontos do CSV.';
+            if (statusEl) statusEl.textContent = err.message || 'Erro ao carregar pontos da coleção.';
         }
     };
 
-    addMarkersFromCSV();
+    addMarkersFromData();
 
     // Add scale control
     L.control.scale().addTo(map);
